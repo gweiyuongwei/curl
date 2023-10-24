@@ -1922,6 +1922,7 @@ struct UserDefined {
   BIT(http09_allowed); /* allow HTTP/0.9 responses */
 #ifdef USE_WEBSOCKETS
   BIT(ws_raw_mode);
+  BIT(ws_no_auto_pong);
 #endif
 };
 
