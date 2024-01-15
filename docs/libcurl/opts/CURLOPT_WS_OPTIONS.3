@@ -43,6 +43,9 @@ Available bits in the bitmask
 .IP "CURLWS_RAW_MODE (1)"
 Deliver "raw" WebSocket traffic to the \fICURLOPT_WRITEFUNCTION(3)\fP
 callback.
+.IP "CURLWS_NOAUTOPONG (2)"
+Disable the automatic reply to PING messages. This means users must
+send a PONG message with "curl_ws_send".
 
 In raw mode, libcurl does not handle pings or any other frame for the
 application.
