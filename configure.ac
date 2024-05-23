@@ -2525,12 +2525,12 @@ AS_HELP_STRING([--with-winidn=PATH],[enable Windows native IDN])
 AS_HELP_STRING([--without-winidn], [disable Windows native IDN]),
   OPT_WINIDN=$withval)
 case "$OPT_WINIDN" in
-  no|default)
+  no)
     dnl --without-winidn option used or configure option not specified
     want_winidn="no"
     AC_MSG_RESULT([no])
     ;;
-  yes)
+  yes|default)
     dnl --with-winidn option used without path
     want_winidn="yes"
     want_winidn_path="default"
