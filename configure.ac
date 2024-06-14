@@ -2525,12 +2525,22 @@ AS_HELP_STRING([--with-winidn=PATH],[enable Windows native IDN])
 AS_HELP_STRING([--without-winidn], [disable Windows native IDN]),
   OPT_WINIDN=$withval)
 case "$OPT_WINIDN" in
+  default)
+    dnl enable by default on native Windows
+    if test "$curl_cv_native_windows" = "yes"; then
+      want_winidn="yes"
+      want_winidn_path="default"
+    else
+      want_winidn="no"
+    fi
+    AC_MSG_RESULT([no])
+    ;;
   no)
     dnl --without-winidn option used or configure option not specified
     want_winidn="no"
     AC_MSG_RESULT([no])
     ;;
-  yes|default)
+  yes)
     dnl --with-winidn option used without path
     want_winidn="yes"
     want_winidn_path="default"
