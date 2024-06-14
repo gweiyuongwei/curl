@@ -920,6 +920,7 @@ if(WIN32 AND NOT USE_LIBIDN2)
   option(USE_WIN32_IDN "Use WinIDN for IDN support" ${use_win32_idb_default})
   if(USE_WIN32_IDN)
     list(APPEND CURL_LIBS "normaliz")
+    message(STATUS "${CURL_LIBS}")
   endif()
 endif()
 
