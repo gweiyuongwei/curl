@@ -2734,6 +2734,8 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
        * more than once. */
       if(!toggle) {
         global->verbosity = 0;
+        if(set_trace_config(global, "-all"))
+          err = PARAM_NO_MEM;
         global->tracetype = TRACE_NONE;
         break;
       }
