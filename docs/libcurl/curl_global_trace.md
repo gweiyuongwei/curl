@@ -127,7 +127,7 @@ All components involved in transfer protocols, such as 'ftp' and 'http/2'.
 
 ## `proxy`
 
-All components involved in proxying transfers.
+All components involved in use of proxies.
 
 # EXAMPLE
 
