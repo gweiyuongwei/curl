@@ -315,6 +315,7 @@ struct GlobalConfig {
   bool silent;                    /* don't show messages, --silent given */
   bool noprogress;                /* don't show progress bar */
   bool isatty;                    /* Updated internally if output is a tty */
+  unsigned char verbosity;        /* How verbose we should be */
   char *trace_dump;               /* file to dump the network trace to */
   FILE *trace_stream;
   bool trace_fopened;
