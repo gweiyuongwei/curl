@@ -1273,6 +1273,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
   time_t now;
   bool longopt = FALSE;
   bool singleopt = FALSE; /* when true means '-o foo' used '-ofoo' */
+  size_t nopts = 0; /* options processed in `flag`*/
   ParameterError err = PARAM_OK;
   bool toggle = TRUE; /* how to switch boolean options, on or off. Controlled
                          by using --OPTION or --no-OPTION */
@@ -2731,13 +2732,21 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       break;
     case C_VERBOSE: /* --verbose */
       /* This option is a super-boolean with side effect when applied
-       * more than once. */
+       * more than once in the same argument flag, like `-vvv`. */
       if(!toggle) {
         global->verbosity = 0;
         if(set_trace_config(global, "-all"))
           err = PARAM_NO_MEM;
         global->tracetype = TRACE_NONE;
         break;
+      }
+      else if(!nopts) {
+        /* fist `-v` in an argument resets to base verbosity */
+        global->verbosity = 0;
+        if(set_trace_config(global, "-all")) {
+          err = PARAM_NO_MEM;
+          break;
+        }
       }
       /* the '%' thing here will cause the trace get sent to stderr */
       switch(global->verbosity) {
@@ -2902,7 +2911,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       break;
     }
     a = NULL;
-
+    ++nopts; /* processed one option from `flag` input, loop for more */
   } while(!longopt && !singleopt && *++parse && !*usedarg && !err);
 
 error:
