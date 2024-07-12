@@ -48,7 +48,6 @@ else()
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tool_hugehelp.h"
     VERBATIM)
-
 endif()
 
 transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
@@ -73,12 +72,12 @@ endif()
 add_executable(
   ${EXE_NAME}
   ${CURL_CFILES} ${CURLX_CFILES} ${CURL_HFILES}
-  )
+)
 
 add_executable(
   ${PROJECT_NAME}::${EXE_NAME}
   ALIAS ${EXE_NAME}
-  )
+)
 
 add_library(
   curltool  # special libcurltool library just for unittests
@@ -109,7 +108,7 @@ include_directories(
   ${CURL_BINARY_DIR}/include  # for "curl/curl.h"
   # This is needed as tool_hugehelp.c is generated in the binary dir
   ${CURL_SOURCE_DIR}/src      # for "tool_hugehelp.h"
-  )
+)
 
 # Build curl executable
 target_link_libraries(${EXE_NAME} ${LIB_SELECTED_FOR_EXE} ${CURL_LIBS})
@@ -124,6 +123,6 @@ target_link_libraries(${EXE_NAME} ${LIB_SELECTED_FOR_EXE} ${CURL_LIBS})
 
 install(TARGETS ${EXE_NAME} EXPORT ${TARGETS_EXPORT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
 export(TARGETS ${EXE_NAME}
-       FILE ${PROJECT_BINARY_DIR}/curl-target.cmake
-       NAMESPACE ${PROJECT_NAME}::
+  FILE ${PROJECT_BINARY_DIR}/curl-target.cmake
+  NAMESPACE ${PROJECT_NAME}::
 )
