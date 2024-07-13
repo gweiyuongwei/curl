@@ -1714,7 +1714,7 @@ if(NOT CURL_DISABLE_INSTALL)
   endif()
   string(REPLACE ";" " " SUPPORT_PROTOCOLS "${_items}")
   string(TOLOWER "${SUPPORT_PROTOCOLS}" SUPPORT_PROTOCOLS_LOWER)
-  message(STATUS "Protocols: ${SUPPORT_PROTOCOLS_LOWER}")
+  message("Protocols: ${SUPPORT_PROTOCOLS_LOWER}")
 
   # Clear list and try to detect available features
   set(_items)
@@ -1765,7 +1765,7 @@ if(NOT CURL_DISABLE_INSTALL)
     endif()
   endif()
   string(REPLACE ";" " " SUPPORT_FEATURES "${_items}")
-  message(STATUS "Features: ${SUPPORT_FEATURES}")
+  message("Features: ${SUPPORT_FEATURES}")
 
   # Clear list and collect SSL backends
   set(_items)
