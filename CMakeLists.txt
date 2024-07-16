@@ -992,7 +992,7 @@ endif()
 # libssh
 option(CURL_USE_LIBSSH "Use libssh" OFF)
 mark_as_advanced(CURL_USE_LIBSSH)
-if(NOT USE_LIBSSH2 AND CURL_USE_LIBSSH)
+if(NOT USE_LIBSSH2 AND CURL_USE_LIBSSH)  # FIXME: detection fails when it should not, see linux-old.yml
   find_package(libssh CONFIG)
   if(libssh_FOUND)
     message(STATUS "Found libssh ${libssh_VERSION}")
