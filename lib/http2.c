@@ -49,9 +49,10 @@
 #include "dynbuf.h"
 #include "headers.h"
 /* The last 3 #include files should be in this order */
-#include "curl_printf.h"
 #include "curl_memory.h"
+#include "curl_printf.h"
 #include "memdebug.h"
+#include "vtls/vtls_int.h"
 
 #if (NGHTTP2_VERSION_NUM < 0x010c00)
 #error too old nghttp2 version, upgrade!
@@ -2394,6 +2395,23 @@ static CURLcode cf_h2_connect(struct Curl_cfilter *cf,
   if(cf->connected) {
     *done = TRUE;
     return CURLE_OK;
+  }
+
+  /*
+   * Do not run ingress and egress if early data is enabled
+   */
+  if(Curl_conn_cf_is_ssl(cf)) {
+    struct Curl_cfilter *curr;
+    struct ssl_connect_data *connssl;
+    for(curr = cf; curr; curr = curr->next) {
+      if(curr->cft->flags & CF_TYPE_SSL)
+        break;
+    }
+    connssl = curr->ctx;
+    if(connssl->state == ssl_connection_deferred) {
+      *done = TRUE;
+      return CURLE_OK;
+    }
   }
 
   /* Connect the lower filters first */
