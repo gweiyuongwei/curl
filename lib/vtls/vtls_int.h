@@ -97,6 +97,7 @@ struct ssl_connect_data {
   int io_need;                      /* TLS signals special SEND/RECV needs */
   BIT(use_alpn);                    /* if ALPN shall be used in handshake */
   BIT(peer_closed);                 /* peer has closed connection */
+  BIT(reused_session);                 /* peer has closed connection */
 };
 
 

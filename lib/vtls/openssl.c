@@ -3932,7 +3932,7 @@ CURLcode Curl_ossl_ctx_init(struct ossl_ctx *octx,
 
 #endif
 
-  octx->reused_session = FALSE;
+  connssl->reused_session = FALSE;
   if(ssl_config->primary.cache_session && transport == TRNSPRT_TCP) {
     Curl_ssl_sessionid_lock(data);
     if(!Curl_ssl_getsessionid(cf, data, peer, &ssl_sessionid, NULL)) {
@@ -3946,12 +3946,12 @@ CURLcode Curl_ossl_ctx_init(struct ossl_ctx *octx,
       }
       /* Informational message */
       infof(data, "SSL reusing session ID");
-      octx->reused_session = TRUE;
+      connssl->reused_session = TRUE;
     }
     Curl_ssl_sessionid_unlock(data);
   }
 #ifdef HAS_ALPN
-  if(octx->reused_session) {
+  if(connssl->reused_session) {
     /* Set some parameters that could be used by early data */
     if(connssl->alpn) {
       const unsigned char *neg_protocol;
@@ -4483,6 +4483,8 @@ CURLcode Curl_oss_check_peer_cert(struct Curl_cfilter *cf,
   struct connectdata *conn = cf->conn;
   struct ssl_config_data *ssl_config = Curl_ssl_cf_get_config(cf, data);
   struct ssl_primary_config *conn_config = Curl_ssl_cf_get_primary_config(cf);
+  struct ssl_connect_data *connssl = cf->ctx;
+
   CURLcode result = CURLE_OK;
   int rc;
   long lerr;
@@ -4658,7 +4660,7 @@ CURLcode Curl_oss_check_peer_cert(struct Curl_cfilter *cf,
 
 #if (OPENSSL_VERSION_NUMBER >= 0x0090808fL) && !defined(OPENSSL_NO_TLSEXT) && \
   !defined(OPENSSL_NO_OCSP)
-  if(conn_config->verifystatus && !octx->reused_session) {
+  if(conn_config->verifystatus && !connssl->reused_session) {
     /* do not do this after Session ID reuse */
     result = verifystatus(cf, data, octx);
     if(result) {
@@ -4762,7 +4764,7 @@ static CURLcode ossl_connect_common(struct Curl_cfilter *cf,
       goto out;
 
     if(data->set.ssl.earlydata && SSL_version(octx->ssl) == TLS1_3_VERSION &&
-        octx->reused_session &&
+        connssl->reused_session &&
         SSL_SESSION_get_max_early_data(SSL_get_session(octx->ssl))) {
       /* the user wants to send early data
        * finish the connection in ossl_send
