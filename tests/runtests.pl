@@ -418,6 +418,15 @@ sub showdiff {
     return @out;
 }
 
+sub show_fail_header {
+    my ($testnum, $showheader)=@_;
+    if($showheader) {
+        my $testname= (getpart("client", "name"))[0];
+        chomp $testname;
+        logmsg "FAILED: $testnum - $testname\n";
+        $showheader = 0;
+    }
+}
 
 #######################################################################
 # compare test results with the expected output, we might filter off
@@ -432,12 +441,7 @@ sub compare {
         # timestamp test result verification end
         $timevrfyend{$testnum} = Time::HiRes::time();
 
-        if($showheader) {
-            my $testname= (getpart("client", "name"))[0];
-            chomp $testname;
-            logmsg "FAILED: $testnum - $testname\n";
-            $showheader = 0;
-        }
+        show_fail_header($testnum, \$showheader);
 
         if(!$short) {
             logmsg "\n $testnum: $subject FAILED:\n";
@@ -1380,6 +1384,7 @@ sub singletest_check {
         }
 
         if((!$out[0] || ($out[0] eq "")) && $protocol[0]) {
+            show_fail_header($testnum, \$showheader);
             logmsg "\n $testnum: protocol FAILED!\n".
                 " There was no content at all in the file $logdir/$SERVERIN.\n".
                 " Server glitch? Total curl failure? Returned: $cmdres\n";
