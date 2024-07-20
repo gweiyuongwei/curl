@@ -424,13 +424,20 @@ sub showdiff {
 # some pattern that is allowed to differ, output test results
 #
 sub compare {
-    my ($runnerid, $testnum, $testname, $subject, $firstref, $secondref)=@_;
+    my ($runnerid, $testnum, $testname, $subject, $firstref, $secondref, $showheader)=@_;
 
     my $result = compareparts($firstref, $secondref);
 
     if($result) {
         # timestamp test result verification end
         $timevrfyend{$testnum} = Time::HiRes::time();
+
+        if($showheader) {
+            my $testname= (getpart("client", "name"))[0];
+            chomp $testname;
+            logmsg "FAILED: $testnum - $testname\n";
+            $showheader = 0;
+        }
 
         if(!$short) {
             logmsg "\n $testnum: $subject FAILED:\n";
@@ -1200,6 +1207,8 @@ sub singletest_check {
         return -2;
     }
 
+    $showheader = $quietsuccess;
+
     my $logdir = getrunnerlogdir($runnerid);
     my @err = getpart("verify", "errorcode");
     my $errorcode = $err[0] || "0";
@@ -1265,7 +1274,7 @@ sub singletest_check {
             subnewlines(0, \$_) for @validstdout;
         }
 
-        $res = compare($runnerid, $testnum, $testname, "stdout", \@actual, \@validstdout);
+        $res = compare($runnerid, $testnum, $testname, "stdout", \@actual, \@validstdout, \$showheader);
         if($res) {
             return -1;
         }
@@ -1321,7 +1330,7 @@ sub singletest_check {
             subnewlines(0, \$_) for @validstderr;
         }
 
-        $res = compare($runnerid, $testnum, $testname, "stderr", \@actual, \@validstderr);
+        $res = compare($runnerid, $testnum, $testname, "stderr", \@actual, \@validstderr, \$showheader);
         if($res) {
             return -1;
         }
@@ -1379,7 +1388,7 @@ sub singletest_check {
             return -1;
         }
 
-        $res = compare($runnerid, $testnum, $testname, "protocol", \@out, \@protocol);
+        $res = compare($runnerid, $testnum, $testname, "protocol", \@out, \@protocol, \$showheader);
         if($res) {
             return -1;
         }
@@ -1445,7 +1454,7 @@ sub singletest_check {
     if(!$replyattr{'nocheck'} && (@reply || $replyattr{'sendzero'})) {
         # verify the received data
         my @out = loadarray($CURLOUT);
-        $res = compare($runnerid, $testnum, $testname, "data", \@out, \@reply);
+        $res = compare($runnerid, $testnum, $testname, "data", \@out, \@reply, \$showheader);
         if ($res) {
             return -1;
         }
@@ -1476,7 +1485,7 @@ sub singletest_check {
             }
         }
 
-        $res = compare($runnerid, $testnum, $testname, "upload", \@out, \@upload);
+        $res = compare($runnerid, $testnum, $testname, "upload", \@out, \@upload, \$showheader);
         if ($res) {
             return -1;
         }
@@ -1519,7 +1528,7 @@ sub singletest_check {
             subnewlines(0, \$_) for @proxyprot;
         }
 
-        $res = compare($runnerid, $testnum, $testname, "proxy", \@out, \@proxyprot);
+        $res = compare($runnerid, $testnum, $testname, "proxy", \@out, \@proxyprot, \$showheader);
         if($res) {
             return -1;
         }
@@ -1601,7 +1610,7 @@ sub singletest_check {
             }
 
             $res = compare($runnerid, $testnum, $testname, "output ($filename)",
-                           \@generated, \@outfile);
+                           \@generated, \@outfile, \$showheader);
             if($res) {
                 return -1;
             }
@@ -1616,7 +1625,7 @@ sub singletest_check {
     if(@socksprot) {
         # Verify the sent SOCKS proxy details
         my @out = loadarray("$logdir/$SOCKSIN");
-        $res = compare($runnerid, $testnum, $testname, "socks", \@out, \@socksprot);
+        $res = compare($runnerid, $testnum, $testname, "socks", \@out, \@socksprot, \$showheader);
         if($res) {
             return -1;
         }
@@ -1944,11 +1953,6 @@ sub singletest {
 
         $error = singletest_check($runnerid, $testnum, $cmdres, $CURLOUT, $tool, $usedvalgrind);
         if($error == -1) {
-            if($quietsuccess) {
-                my $testname= (getpart("client", "name"))[0];
-                chomp $testname;
-                logmsg "FAILED: $testnum - $testname\n";
-            }
             my $err = ignoreresultcode($testnum);
             # Submit the test case result with the CI environment
             citest_finishtest($testnum, $err);
