@@ -1944,6 +1944,11 @@ sub singletest {
 
         $error = singletest_check($runnerid, $testnum, $cmdres, $CURLOUT, $tool, $usedvalgrind);
         if($error == -1) {
+            if($quietsuccess) {
+                my $testname= (getpart("client", "name"))[0];
+                chomp $testname;
+                logmsg "FAILED: $testnum - $testname\n";
+            }
             my $err = ignoreresultcode($testnum);
             # Submit the test case result with the CI environment
             citest_finishtest($testnum, $err);
