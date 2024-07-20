@@ -1172,14 +1172,15 @@ sub singletest_count {
         return -1;
     }
 
-    # At this point we've committed to run this test
-    logmsg sprintf("test %04d...", $testnum) if(!$automakestyle);
+    if(!$quietsuccess) {
+        # At this point we've committed to run this test
+        logmsg sprintf("test %04d...", $testnum) if(!$automakestyle);
 
-    # name of the test
-    my $testname= (getpart("client", "name"))[0];
-    chomp $testname;
-    logmsg "[$testname]\n" if(!$short);
-
+        # name of the test
+        my $testname= (getpart("client", "name"))[0];
+        chomp $testname;
+        logmsg "[$testname]\n" if(!$short);
+    }
     if($listonly) {
         timestampskippedevents($testnum);
     }
@@ -1731,7 +1732,7 @@ sub singletest_check {
     # add 'E' for event-based
     $ok .= $run_event_based ? "E" : "-";
 
-    logmsg "$ok " if(!$short);
+    logmsg "$ok " if(!$short && !$quietsuccess);
 
     # timestamp test result verification end
     $timevrfyend{$testnum} = Time::HiRes::time();
