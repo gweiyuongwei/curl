@@ -1746,23 +1746,25 @@ sub singletest_check {
 sub singletest_success {
     my ($testnum, $count, $total, $errorreturncode)=@_;
 
-    if(!$automakestyle && !$quietsuccess) {
-        my $sofar= time()-$start;
-        my $esttotal = $sofar/$count * $total;
-        my $estleft = $esttotal - $sofar;
-        my $timeleft=sprintf("remaining: %02d:%02d",
-                             $estleft/60,
-                             $estleft%60);
-        my $took = $timevrfyend{$testnum} - $timeprepini{$testnum};
-        my $duration = sprintf("duration: %02d:%02d",
-                               $sofar/60, $sofar%60);
-        logmsg sprintf("OK (%-3d out of %-3d, %s, took %.3fs, %s)\n",
-                       $count, $total, $timeleft, $took, $duration);
-    }
-    elsif(!$quietsuccess) {
-        my $testname= (getpart("client", "name"))[0];
-        chomp $testname;
-        logmsg "PASS: $testnum - $testname\n";
+    if(!$quietsuccess) {
+        if(!$automakestyle) {
+            my $sofar= time()-$start;
+            my $esttotal = $sofar/$count * $total;
+            my $estleft = $esttotal - $sofar;
+            my $timeleft=sprintf("remaining: %02d:%02d",
+                                 $estleft/60,
+                                 $estleft%60);
+            my $took = $timevrfyend{$testnum} - $timeprepini{$testnum};
+            my $duration = sprintf("duration: %02d:%02d",
+                                   $sofar/60, $sofar%60);
+            logmsg sprintf("OK (%-3d out of %-3d, %s, took %.3fs, %s)\n",
+                           $count, $total, $timeleft, $took, $duration);
+        }
+        else {
+            my $testname= (getpart("client", "name"))[0];
+            chomp $testname;
+            logmsg "PASS: $testnum - $testname\n";
+        }
     }
 
     if($errorreturncode==2) {
