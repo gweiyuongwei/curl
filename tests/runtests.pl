@@ -1759,7 +1759,7 @@ sub singletest_success {
         logmsg sprintf("OK (%-3d out of %-3d, %s, took %.3fs, %s)\n",
                        $count, $total, $timeleft, $took, $duration);
     }
-    else {
+    elsif(!$quietsuccess) {
         my $testname= (getpart("client", "name"))[0];
         chomp $testname;
         logmsg "PASS: $testnum - $testname\n";
