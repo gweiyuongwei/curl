@@ -4966,7 +4966,7 @@ static ssize_t ossl_send(struct Curl_cfilter *cf,
          should be called again later. This is basically an EWOULDBLOCK
          equivalent. */
       *curlcode = CURLE_AGAIN;
-      written = -1;
+      written = (size_t)-1;
       goto out;
     case SSL_ERROR_SYSCALL:
     {
@@ -4974,7 +4974,7 @@ static ssize_t ossl_send(struct Curl_cfilter *cf,
 
       if(octx->io_result == CURLE_AGAIN) {
         *curlcode = CURLE_AGAIN;
-        written = -1;
+        written = (size_t)-1;
         goto out;
       }
       sslerror = ERR_get_error();
@@ -4989,7 +4989,7 @@ static ssize_t ossl_send(struct Curl_cfilter *cf,
       failf(data, OSSL_PACKAGE " %s: %s, errno %d",
             ssl_writer_str, error_buffer, sockerr);
       *curlcode = CURLE_SEND_ERROR;
-      written = -1;
+      written = (size_t)-1;
       goto out;
     }
     case SSL_ERROR_SSL: {
@@ -5000,7 +5000,7 @@ static ssize_t ossl_send(struct Curl_cfilter *cf,
             ssl_writer_str,
             ossl_strerror(sslerror, error_buffer, sizeof(error_buffer)));
       *curlcode = CURLE_SEND_ERROR;
-      written = -1;
+      written = (size_t)-1;
       goto out;
     }
     default:
@@ -5008,7 +5008,7 @@ static ssize_t ossl_send(struct Curl_cfilter *cf,
       failf(data, OSSL_PACKAGE " %s: %s, errno %d",
             ssl_writer_str, SSL_ERROR_to_str(err), SOCKERRNO);
       *curlcode = CURLE_SEND_ERROR;
-      written = -1;
+      written = (size_t)-1;
       goto out;
     }
   }
@@ -5024,7 +5024,7 @@ static ssize_t ossl_send(struct Curl_cfilter *cf,
     if(!*curlcode &&
         SSL_get_early_data_status(octx->ssl) == SSL_EARLY_DATA_REJECTED) {
       *curlcode = CURLE_AGAIN;
-      written = -1;
+      written = (size_t)-1;
     }
 
     infof(data, OSSL_PACKAGE " SSL_write_early_data: %s",
