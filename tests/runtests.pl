@@ -1207,7 +1207,7 @@ sub singletest_check {
         return -2;
     }
 
-    $showheader = $quietsuccess;
+    my $showheader = $quietsuccess;
 
     my $logdir = getrunnerlogdir($runnerid);
     my @err = getpart("verify", "errorcode");
