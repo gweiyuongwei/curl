@@ -591,51 +591,6 @@ static int h2_process_pending_input(struct Curl_cfilter *cf,
   return 0;
 }
 
-/*
- * The server may send us data at any point (e.g. PING frames). Therefore,
- * we cannot assume that an HTTP/2 socket is dead just because it is readable.
- *
- * Check the lower filters first and, if successful, peek at the socket
- * and distinguish between closed and data.
- */
-static bool http2_connisalive(struct Curl_cfilter *cf, struct Curl_easy *data,
-                              bool *input_pending)
-{
-  struct cf_h2_ctx *ctx = cf->ctx;
-  bool alive = TRUE;
-
-  *input_pending = FALSE;
-  if(!cf->next || !cf->next->cft->is_alive(cf->next, data, input_pending))
-    return FALSE;
-
-  if(*input_pending) {
-    /* This happens before we have sent off a request and the connection is
-       not in use by any other transfer, there should not be any data here,
-       only "protocol frames" */
-    CURLcode result;
-    ssize_t nread = -1;
-
-    *input_pending = FALSE;
-    nread = Curl_bufq_slurp(&ctx->inbufq, nw_in_reader, cf, &result);
-    if(nread != -1) {
-      CURL_TRC_CF(data, cf, "%zd bytes stray data read before trying "
-                  "h2 connection", nread);
-      if(h2_process_pending_input(cf, data, &result) < 0)
-        /* immediate error, considered dead */
-        alive = FALSE;
-      else {
-        alive = !should_close_session(ctx);
-      }
-    }
-    else if(result != CURLE_AGAIN) {
-      /* the read failed so let's say this is dead anyway */
-      alive = FALSE;
-    }
-  }
-
-  return alive;
-}
-
 static CURLcode http2_send_ping(struct Curl_cfilter *cf,
                                 struct Curl_easy *data)
 {
@@ -1907,7 +1862,7 @@ static CURLcode h2_progress_ingress(struct Curl_cfilter *cf,
        * the transfer loop can handle the data/close here. However,
        * this may leave data in underlying buffers that will not
        * be consumed. */
-      if(!cf->next || !cf->next->cft->has_data_pending(cf->next, data))
+      if(!Curl_conn_cf_input_pending(cf->next, data))
         drain_stream(cf, data, stream);
       break;
     }
@@ -2592,8 +2547,8 @@ static CURLcode cf_h2_cntrl(struct Curl_cfilter *cf,
   return result;
 }
 
-static bool cf_h2_data_pending(struct Curl_cfilter *cf,
-                               const struct Curl_easy *data)
+static bool cf_h2_input_pending(struct Curl_cfilter *cf,
+                                struct Curl_easy *data)
 {
   struct cf_h2_ctx *ctx = cf->ctx;
   struct h2_stream_ctx *stream = H2_STREAM_CTX(ctx, data);
@@ -2601,7 +2556,7 @@ static bool cf_h2_data_pending(struct Curl_cfilter *cf,
   if(ctx && (!Curl_bufq_is_empty(&ctx->inbufq)
             || (stream && !Curl_bufq_is_empty(&stream->sendbuf))))
     return TRUE;
-  return cf->next? cf->next->cft->has_data_pending(cf->next, data) : FALSE;
+  return Curl_conn_cf_input_pending(cf->next, data);
 }
 
 static bool cf_h2_is_alive(struct Curl_cfilter *cf,
@@ -2609,15 +2564,42 @@ static bool cf_h2_is_alive(struct Curl_cfilter *cf,
                            bool *input_pending)
 {
   struct cf_h2_ctx *ctx = cf->ctx;
-  CURLcode result;
-  struct cf_call_data save;
+  bool alive = TRUE;
 
-  CF_DATA_SAVE(save, cf, data);
-  result = (ctx && ctx->h2 && http2_connisalive(cf, data, input_pending));
-  CURL_TRC_CF(data, cf, "conn alive -> %d, input_pending=%d",
-              result, *input_pending);
-  CF_DATA_RESTORE(cf, save);
-  return result;
+  *input_pending = FALSE;
+  if(!ctx || !ctx->h2 || !Curl_conn_cf_is_alive(cf->next, data, input_pending))
+    return FALSE;
+
+  if(*input_pending) {
+    /* The server may send us data at any point (e.g. PING frames). Therefore,
+     * we cannot assume that an HTTP/2 socket is dead just because there
+     * is data. Digest the incoming data and if that does not give us errors
+     * or a GOAWAY, consider the connection alive. */
+    struct cf_call_data save;
+    CURLcode result;
+    ssize_t nread = -1;
+
+    CF_DATA_SAVE(save, cf, data);
+    *input_pending = FALSE;
+    nread = Curl_bufq_slurp(&ctx->inbufq, nw_in_reader, cf, &result);
+    if(nread > 0) {
+      CURL_TRC_CF(data, cf, "incoming %zd bytes during alive check", nread);
+      if(h2_process_pending_input(cf, data, &result) < 0)
+        /* immediate error, considered dead */
+        alive = FALSE;
+      else {
+        alive = !should_close_session(ctx) && !ctx->rcvd_goaway;
+      }
+    }
+    else if(nread == 0 || result != CURLE_AGAIN) {
+      /* the read failed so let's say this is dead anyway */
+      alive = FALSE;
+    }
+    CURL_TRC_CF(data, cf, "conn alive -> %d, input_pending=%d",
+                alive, *input_pending);
+    CF_DATA_RESTORE(cf, save);
+  }
+  return alive;
 }
 
 static CURLcode cf_h2_keep_alive(struct Curl_cfilter *cf,
@@ -2660,12 +2642,16 @@ static CURLcode cf_h2_query(struct Curl_cfilter *cf,
     *pres1 = stream? (int)stream->error : 0;
     return CURLE_OK;
   }
+  case CF_QUERY_IS_ALIVE:
+    *pres1 = cf_h2_is_alive(cf, data, (bool *)pres2);
+    return CURLE_OK;
+  case CF_QUERY_INPUT_PENDING:
+    *pres1 = cf_h2_input_pending(cf, data);
+    return CURLE_OK;
   default:
     break;
   }
-  return cf->next?
-    cf->next->cft->query(cf->next, data, query, pres1, pres2) :
-    CURLE_UNKNOWN_OPTION;
+  return Curl_cf_def_query(cf, data, query, pres1, pres2);
 }
 
 struct Curl_cftype Curl_cft_nghttp2 = {
@@ -2678,11 +2664,9 @@ struct Curl_cftype Curl_cft_nghttp2 = {
   cf_h2_shutdown,
   Curl_cf_def_get_host,
   cf_h2_adjust_pollset,
-  cf_h2_data_pending,
   cf_h2_send,
   cf_h2_recv,
   cf_h2_cntrl,
-  cf_h2_is_alive,
   cf_h2_keep_alive,
   cf_h2_query,
 };

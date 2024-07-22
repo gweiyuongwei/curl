@@ -90,13 +90,6 @@ void Curl_cf_def_adjust_pollset(struct Curl_cfilter *cf,
   (void)ps;
 }
 
-bool Curl_cf_def_data_pending(struct Curl_cfilter *cf,
-                              const struct Curl_easy *data)
-{
-  return cf->next?
-    cf->next->cft->has_data_pending(cf->next, data) : FALSE;
-}
-
 ssize_t  Curl_cf_def_send(struct Curl_cfilter *cf, struct Curl_easy *data,
                           const void *buf, size_t len, CURLcode *err)
 {
@@ -111,15 +104,6 @@ ssize_t  Curl_cf_def_recv(struct Curl_cfilter *cf, struct Curl_easy *data,
   return cf->next?
     cf->next->cft->do_recv(cf->next, data, buf, len, err) :
     CURLE_SEND_ERROR;
-}
-
-bool Curl_cf_def_conn_is_alive(struct Curl_cfilter *cf,
-                               struct Curl_easy *data,
-                               bool *input_pending)
-{
-  return cf->next?
-    cf->next->cft->is_alive(cf->next, data, input_pending) :
-    FALSE; /* pessimistic in absence of data */
 }
 
 CURLcode Curl_cf_def_conn_keep_alive(struct Curl_cfilter *cf,
@@ -483,22 +467,33 @@ bool Curl_conn_is_multiplex(struct connectdata *conn, int sockindex)
   return FALSE;
 }
 
-bool Curl_conn_data_pending(struct Curl_easy *data, int sockindex)
+bool Curl_conn_cf_input_pending(struct Curl_cfilter *cf,
+                                struct Curl_easy *data)
+{
+  if(cf) {
+    int input_pending = FALSE;
+    CURLcode result = cf->cft->query(cf, data, CF_QUERY_INPUT_PENDING,
+                                     &input_pending, NULL);
+    return !result && !!input_pending;
+  }
+  return FALSE;
+}
+
+bool Curl_conn_input_pending(struct Curl_easy *data, int sockindex)
 {
   struct Curl_cfilter *cf;
 
-  (void)data;
   DEBUGASSERT(data);
   DEBUGASSERT(data->conn);
-
   cf = data->conn->cfilter[sockindex];
-  while(cf && !cf->connected) {
+  /* Get the lowest not-connected filter, if there is one */
+  while(cf && !cf->connected && cf->next && !cf->next->connected)
     cf = cf->next;
-  }
-  if(cf) {
-    return cf->cft->has_data_pending(cf, data);
-  }
-  return FALSE;
+  /* Skip all filters already shut down */
+  while(cf && cf->shutdown)
+    cf = cf->next;
+
+  return Curl_conn_cf_input_pending(cf, data);
 }
 
 void Curl_conn_cf_adjust_pollset(struct Curl_cfilter *cf,
@@ -746,12 +741,36 @@ static void conn_report_connect_stats(struct Curl_easy *data,
   }
 }
 
-bool Curl_conn_is_alive(struct Curl_easy *data, struct connectdata *conn,
-                        bool *input_pending)
+bool Curl_conn_cf_is_alive(struct Curl_cfilter *cf,
+                           struct Curl_easy *data,
+                           bool *input_pending)
 {
-  struct Curl_cfilter *cf = conn->cfilter[FIRSTSOCKET];
-  return cf && !cf->conn->bits.close &&
-         cf->cft->is_alive(cf, data, input_pending);
+  int is_alive = FALSE;
+  *input_pending = FALSE;
+  if(cf) {
+    CURLcode result = cf->cft->query(cf, data, CF_QUERY_IS_ALIVE,
+                                     &is_alive, input_pending);
+    return !result && !!is_alive;
+  }
+  return FALSE;
+}
+
+bool Curl_conn_is_alive(struct Curl_easy *data, bool *input_pending)
+{
+  struct Curl_cfilter *cf = data->conn->cfilter[FIRSTSOCKET];
+
+  *input_pending = FALSE;
+  if(cf->conn->bits.close)
+    return FALSE;
+
+  /* Get the lowest not-connected filter, if there is one */
+  while(cf && !cf->connected && cf->next && !cf->next->connected)
+    cf = cf->next;
+  /* If this filter is shutdown, the connection is not alive */
+  if(cf && cf->shutdown)
+    return FALSE;
+
+  return Curl_conn_cf_is_alive(cf, data, input_pending);
 }
 
 CURLcode Curl_conn_keep_alive(struct Curl_easy *data,
