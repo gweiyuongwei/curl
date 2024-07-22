@@ -640,7 +640,7 @@ macro(openssl_check_symbol_exists SYMBOL FILES VARIABLE EXTRA_LIBS)
     endif()
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -DHAVE_UINTPTR_T)  # to pull in stdint.h (as of wolfSSL v5.5.4)
   endif()
-  if(NOT "${EXTRA_LIBS}" STREQUAL "")
+  if(NOT EXTRA_LIBS STREQUAL "")
     list(APPEND CMAKE_REQUIRED_LIBRARIES "${EXTRA_LIBS}")
   endif()
   check_symbol_exists("${SYMBOL}" "${FILES}" "${VARIABLE}")
@@ -974,7 +974,7 @@ if(CURL_USE_LIBPSL)
 endif()
 
 # libssh2
-option(CURL_USE_LIBSSH2 "Use libssh2" ON)
+option(CURL_USE_LIBSSH2 "Use libssh2" ON)  # FIXME: default is OFF in autotools
 mark_as_advanced(CURL_USE_LIBSSH2)
 set(USE_LIBSSH2 OFF)
 
@@ -992,7 +992,7 @@ endif()
 # libssh
 option(CURL_USE_LIBSSH "Use libssh" OFF)
 mark_as_advanced(CURL_USE_LIBSSH)
-if(NOT USE_LIBSSH2 AND CURL_USE_LIBSSH)
+if(NOT USE_LIBSSH2 AND CURL_USE_LIBSSH)  # FIXME: detection fails when it should not, see linux-old.yml
   find_package(libssh CONFIG)
   if(libssh_FOUND)
     message(STATUS "Found libssh ${libssh_VERSION}")
@@ -1714,7 +1714,7 @@ if(NOT CURL_DISABLE_INSTALL)
   endif()
   string(REPLACE ";" " " SUPPORT_PROTOCOLS "${_items}")
   string(TOLOWER "${SUPPORT_PROTOCOLS}" SUPPORT_PROTOCOLS_LOWER)
-  message(STATUS "Protocols: ${SUPPORT_PROTOCOLS_LOWER}")
+  message("Protocols: ${SUPPORT_PROTOCOLS_LOWER}")
 
   # Clear list and try to detect available features
   set(_items)
@@ -1765,7 +1765,7 @@ if(NOT CURL_DISABLE_INSTALL)
     endif()
   endif()
   string(REPLACE ";" " " SUPPORT_FEATURES "${_items}")
-  message(STATUS "Features: ${SUPPORT_FEATURES}")
+  message("Features: ${SUPPORT_FEATURES}")
 
   # Clear list and collect SSL backends
   set(_items)
